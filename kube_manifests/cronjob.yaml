@@ -1,0 +1,33 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: app
+  namespace: app
+  labels:
+    app: app
+spec:
+  schedule: "*/5 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: app
+            azure.workload.identity/use: "true"
+        spec:
+          serviceAccountName: app
+          containers:
+          - name: app
+            image: crpostgresqlworkloadid.azurecr.io/app:latest
+            ports:
+            - containerPort: 80
+            env:
+            - name: DBHOST
+              value: psql-postgresql-workload-id.postgres.database.azure.com
+            - name: DBUSER
+              value: id-postgresql-workload-id-app
+            - name: DBNAME
+              value: app
+            - name: SSL_MODE
+              value: require
+          restartPolicy: Never

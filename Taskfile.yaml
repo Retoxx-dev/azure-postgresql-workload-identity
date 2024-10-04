@@ -1,0 +1,46 @@
+version: '3'
+
+tasks:
+  kubeaccess:
+    cmds:
+      - echo "Configuring kubectl..."
+      - az aks get-credentials --resource-group rg-postgresql-workload-id --name aks-postgresql-workload-id --overwrite-existing
+      - echo "Configuration completed successfully."
+    silent: true
+  install:
+    deps:
+      - build
+      - push
+      - kubeaccess
+    cmds:
+      - echo "Deploying CronJob to kubernetes cluster..."
+      - echo "Creating namespace..."
+      - kubectl apply -f kube_manifests/namespace.yaml
+      - echo "Creating service account..."
+      - kubectl apply -f kube_manifests/service_account.yaml
+      - echo "Deploying CronJob..."
+      - kubectl apply -f kube_manifests/cronjob.yaml
+      - echo "Deployment completed successfully."
+    silent: true
+  build:
+    cmds:
+      - echo "Building application..."
+      - docker build -t crpostgresqlworkloadid.azurecr.io/app:latest -f ./app/Dockerfile ./app --platform=linux/amd64
+      - echo "Build completed successfully."
+  push:
+    cmds:
+      - echo "Logging into Azure Container Registry..."
+      - az acr login --name crpostgresqlworkloadid
+      - echo "Pushing image to Azure Container Registry..."
+      - docker push crpostgresqlworkloadid.azurecr.io/app:latest
+      - echo "Push completed successfully."
+    silent: true
+  pgadmin:
+    deps:
+      - kubeaccess
+    cmds:
+      - echo "Deploying pgadmin..."
+      - helm repo add runix https://helm.runix.net/
+      - helm install pgadmin4 runix/pgadmin4 --version 1.29.0 --create-namespace --namespace pgadmin4
+      - echo "Deployment completed successfully."
+    silent: true
